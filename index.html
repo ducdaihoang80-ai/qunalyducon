@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đọc Truyện Online</title>
+  <style>
+    :root { --bg: #0e0e12; --card: #181820; --text: #eaeaea; --muted: #9ca3af; --accent: #ff4757; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; padding-bottom: 60px; }
+    .hidden { display: none !important; }
+    .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+    /* Trang ngoài - Thông tin truyện */
+    .hero { display: flex; gap: 22px; background: var(--card); padding: 22px; border-radius: 14px; margin-bottom: 24px; align-items: center; border: 1px solid #262632; }
+    .hero img { width: 150px; height: 210px; object-fit: cover; border-radius: 10px; flex-shrink: 0; background: #252532; }
+    .hero h1 { font-size: 1.65rem; margin-bottom: 6px; }
+    .hero .author { color: var(--accent); font-size: 0.95rem; margin-bottom: 10px; font-weight: 500; }
+    .hero .desc { color: var(--muted); font-size: 0.92rem; margin-bottom: 16px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* Nút bấm chung */
+    button, select { background: #252532; color: var(--text); border: 1px solid #38384a; padding: 9px 15px; border-radius: 8px; font-size: 0.92rem; cursor: pointer; transition: 0.15s; }
+    button:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+    button.primary:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Thanh tiêu đề & nút sắp xếp */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #262632; }
+    .section-title { font-size: 1.15rem; font-weight: 700; }
+    .section-title span { font-size: 0.85rem; color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .sort-tabs { display: flex; gap: 8px; }
+    .sort-tabs button { background: none; border: none; color: var(--muted); padding: 4px 8px; font-size: 0.88rem; }
+    .sort-tabs button:hover { background: none; color: var(--text); }
+    .sort-tabs button.active { color: var(--accent); font-weight: 700; }
+
+    /* Danh sách chương hàng ngang */
+    .chapter-list { display: flex; flex-direction: column; background: var(--card); border-radius: 12px; border: 1px solid #262632; overflow: hidden; margin-bottom: 28px; }
+    .chapter-row { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid #262632; cursor: pointer; transition: background 0.15s; }
+    .chapter-row:last-child { border-bottom: none; }
+    .chapter-row:hover { background: #22222d; }
+    .chapter-row img { width: 128px; height: 74px; object-fit: cover; object-position: center; border-radius: 6px; flex-shrink: 0; background: #252532; border: 1px solid #2e2e3d; }
+    .chapter-row .chap-meta { flex: 1; min-width: 0; }
+    .chapter-row .chap-name { font-weight: 600; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+    .chapter-row .chap-pages { font-size: 0.82rem; color: var(--muted); }
+    .chapter-row .chap-arrow { color: var(--muted); font-size: 0.85rem; }
+
+    /* Trang đọc truyện */
+    .nav-bar { position: sticky; top: 0; z-index: 100; background: rgba(24, 24, 32, 0.95); backdrop-filter: blur(8px); padding: 10px 14px; border-bottom: 1px solid #2a2a36; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .nav-bar select { max-width: 210px; }
+    .reader { max-width: 800px; margin: 12px auto; display: flex; flex-direction: column; align-items: center; }
+    .reader img { width: 100%; height: auto; display: block; background: #14141b; min-height: 200px; }
+    .top-btn { position: fixed; bottom: 20px; right: 20px; background: var(--accent); border: none; border-radius: 50%; width: 44px; height: 44px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 90; }
+
+    /* Khu vực Cảm xúc & Bình luận */
+    .social-box { background: var(--card); border: 1px solid #262632; border-radius: 14px; padding: 20px; margin-top: 24px; }
+    .social-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .social-mode { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+
+    .react-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #262632; }
+    .react-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: #22222e; border: 1px solid #323244; font-size: 0.88rem; color: var(--text); }
+    .react-btn:hover { background: #2d2d3d; border-color: #4b4b66; }
+    .react-btn.active { background: rgba(255, 71, 87, 0.18); border-color: var(--accent); color: #ff7b87; font-weight: 600; }
+    .react-btn .cnt { font-size: 0.82rem; opacity: 0.85; }
+
+    .cmt-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .cmt-form input, .cmt-form textarea {
+      width: 100%; background: #111117; color: var(--text); border: 1px solid #2e2e3d;
+      border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 0.93rem; outline: none;
+    }
+    .cmt-form input:focus, .cmt-form textarea:focus { border-color: var(--accent); }
+    .cmt-form textarea { min-height: 76px; resize: vertical; }
+    .cmt-form-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .cmt-form-row input { flex: 1; min-width: 180px; }
+
+    .cmt-list { display: flex; flex-direction: column; gap: 12px; }
+    .cmt-item { display: flex; gap: 12px; background: #13131a; border: 1px solid #242432; border-radius: 10px; padding: 12px 14px; }
+    .cmt-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; flex-shrink: 0; color: #fff; text-transform: uppercase; }
+    .cmt-body { flex: 1; min-width: 0; }
+    .cmt-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+    .cmt-name { font-weight: 600; font-size: 0.95rem; color: #fff; }
+    .cmt-time { font-size: 0.78rem; color: var(--muted); }
+    .cmt-text { font-size: 0.93rem; color: #dcdce4; white-space: pre-wrap; word-break: break-word; margin-bottom: 8px; }
+    .cmt-reacts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cmt-react-btn { padding: 3px 8px; font-size: 0.8rem; border-radius: 999px; background: #1e1e28; border: 1px solid #2e2e3d; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+    .cmt-react-btn:hover { background: #282836; color: var(--text); border-color: #44445a; }
+    .cmt-react-btn.active { background: rgba(255, 71, 87, 0.16); border-color: var(--accent); color: #ff7b87; }
+    .cmt-empty { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 16px 0; }
+
+    @media (max-width: 600px) {
+      .hero { flex-direction: column; text-align: center; }
+      .hero-actions { justify-content: center; }
+      .chapter-row { gap: 12px; padding: 10px 12px; }
+      .chapter-row img { width: 106px; height: 62px; }
+      .social-box { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MÀN HÌNH 1: GIAO DIỆN BÊN NGOÀI -->
+  <div id="homeView" class="container">
+    <div class="hero">
+      <img id="cover" src="" alt="Bìa truyện" />
+      <div>
+        <h1 id="title"></h1>
+        <div class="author" id="author"></div>
+        <p class="desc" id="desc"></p>
+        <div class="hero-actions">
+          <button class="primary" id="readFirstBtn" onclick="openChapter(0)">▶ Đọc từ đầu</button>
+          <button id="continueBtn" class="hidden" onclick="openChapter(savedIndex)">📖 Đọc tiếp</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Danh sách chương <span id="chapCount"></span></div>
+      <div class="sort-tabs">
+        <button id="sortNewest" class="active" onclick="renderChapterList('newest')">Mới nhất</button>
+        <button id="sortOldest" onclick="renderChapterList('oldest')">Từ chap 1</button>
+      </div>
+    </div>
+
+    <div class="chapter-list" id="chapterList"></div>
+
+    <!-- Bình luận chung ở trang ngoài -->
+    <div id="homeSocial"></div>
+  </div>
+
+  <!-- MÀN HÌNH 2: GIAO DIỆN ĐỌC TRUYỆN -->
+  <div id="readerView" class="hidden">
+    <div class="nav-bar">
+      <button onclick="goHome()">🏠 Danh sách</button>
+      <button id="prevBtn" onclick="changeChapter(-1)">◀ Trước</button>
+      <select id="chapterSelect" onchange="openChapter(Number(this.value))"></select>
+      <button id="nextBtn" onclick="changeChapter(1)">Sau ▶</button>
+    </div>
+
+    <div class="reader" id="reader"></div>
+
+    <div class="nav-bar" style="position: static; border-top: 1px solid #2a2a36; border-bottom: none; margin-top: 20px;">
+      <button id="prevBtnBottom" onclick="changeChapter(-1)">◀ Chap trước</button>
+      <button onclick="goHome()">🏠 Danh sách</button>
+      <button id="nextBtnBottom" onclick="changeChapter(1)">Chap sau ▶</button>
+    </div>
+
+    <!-- Bình luận riêng của từng chap -->
+    <div class="container" id="readerSocial"></div>
+
+    <button class="top-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</button>
+  </div>
+
+  <script src="chapters.js"></script>
+  <script>
+    // === 1. THÔNG TIN TRUYỆN ===
+    const MANGA_INFO = {
+      title: "Quản Lý Du Côn",
+      author: "Tên Tác Giả",
+      description: "Mô tả ngắn về bộ truyện..."
+    };
+
+    // === 2. LINK DATABASE BÌNH LUẬN CHUNG (Dán link Firebase Realtime DB vào đây) ===
+    // Ví dụ: "https://web-truyen-123-default-rtdb.firebaseio.com"
+    // Để trống "" nếu chỉ muốn test tạm trên máy của bạn
+    const FIREBASE_URL = "";
+    // ================================================================================
+
+    const REACTIONS = [
+      { key: "haha", icon: "😂", label: "Haha" },
+      { key: "like", icon: "👍", label: "Like" },
+      { key: "tim",  icon: "❤️", label: "Tim" },
+      { key: "angry", icon: "😡", label: "Tức giận" },
+      { key: "shy",  icon: "😳", label: "Xấu hổ" },
+      { key: "nerd", icon: "🤓", label: "Cận thị" }
+    ];
+
+    const data = window.AUTO_DATA || { cover: "", chapters: [] };
+    const chapters = data.chapters || [];
+    const STORAGE_KEY = "last_chap_" + MANGA_INFO.title;
+    let currentIndex = 0;
+    let savedIndex = 0;
+
+    // Tạo ID ẩn danh cố định cho trình duyệt này để đếm reaction chính xác
+    let myClientId = localStorage.getItem("anon_client_id");
+    if (!myClientId) {
+      myClientId = "u_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("anon_client_id", myClientId);
+    }
+
+    document.title = MANGA_INFO.title;
+    document.getElementById("title").textContent = MANGA_INFO.title;
+    document.getElementById("author").textContent = "Tác giả: " + MANGA_INFO.author;
+    document.getElementById("desc").textContent = MANGA_INFO.description;
+    if (data.cover) document.getElementById("cover").src = data.cover;
+
+    const listEl = document.getElementById("chapterList");
+    const select = document.getElementById("chapterSelect");
+
+    function renderChapterList(order) {
+      document.getElementById("sortNewest").classList.toggle("active", order === "newest");
+      document.getElementById("sortOldest").classList.toggle("active", order === "oldest");
+      listEl.innerHTML = "";
+      if (chapters.length === 0) return;
+
+      const indices = chapters.map((_, i) => i);
+      if (order === "newest") indices.reverse();
+
+      indices.forEach((idx) => {
+        const chap = chapters[idx];
+        const thumbSrc = chap.thumb || chap.urls[0];
+        const row = document.createElement("div");
+        row.className = "chapter-row";
+        row.onclick = () => openChapter(idx);
+        row.innerHTML = `
+          <img src="${thumbSrc}" alt="${escapeHtml(chap.name)}" loading="lazy" />
+          <div class="chap-meta">
+            <div class="chap-name">${escapeHtml(chap.name)}</div>
+            <div class="chap-pages">${chap.urls.length} trang</div>
+          </div>
+          <div class="chap-arrow">▶</div>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+
+    if (chapters.length === 0) {
+      document.getElementById("readFirstBtn").disabled = true;
+      listEl.classList.add("hidden");
+    } else {
+      document.getElementById("chapCount").textContent = `(${chapters.length})`;
+      chapters.forEach((chap, idx) => {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = chap.name;
+        select.appendChild(opt);
+      });
+      renderChapterList("newest");
+    }
+
+    function updateContinueBtn() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const btn = document.getElementById("continueBtn");
+      if (saved !== null && Number(saved) < chapters.length) {
+        savedIndex = Number(saved);
+        btn.textContent = `📖 Đọc tiếp (${chapters[savedIndex].name})`;
+        btn.classList.remove("hidden");
+      }
+    }
+
+    function renderChapter(index) {
+      if (index < 0 || index >= chapters.length) return;
+      currentIndex = index;
+      select.value = index;
+      localStorage.setItem(STORAGE_KEY, index);
+
+      const chap = chapters[index];
+      const reader = document.getElementById("reader");
+      reader.innerHTML = "";
+      chap.urls.forEach((src, i) => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = `${chap.name} - Trang ${i + 1}`;
+        img.loading = "lazy";
+        reader.appendChild(img);
+      });
+
+      const isFirst = index === 0;
+      const isLast = index === chapters.length - 1;
+      document.getElementById("prevBtn").disabled = isFirst;
+      document.getElementById("prevBtnBottom").disabled = isFirst;
+      document.getElementById("nextBtn").disabled = isLast;
+      document.getElementById("nextBtnBottom").disabled = isLast;
+
+      initSocialBox("readerSocial", `chap_${chap.id}`, `Cảm xúc & Bình luận (${chap.name})`);
+      window.scrollTo({ top: 0 });
+    }
+
+    function openChapter(index) {
+      if (index < 0 || index >= chapters.length) return;
+      window.location.hash = `chap=${index}`;
+    }
+
+    function changeChapter(step) {
+      openChapter(currentIndex + step);
+    }
+
+    function goHome() {
+      window.location.hash = "";
+    }
+
+    function syncFromHash() {
+      const match = window.location.hash.match(/^#chap=(\d+)$/);
+      if (match && chapters[Number(match[1])]) {
+        document.getElementById("homeView").classList.add("hidden");
+        document.getElementById("readerView").classList.remove("hidden");
+        renderChapter(Number(match[1]));
+      } else {
+        document.getElementById("readerView").classList.add("hidden");
+        document.getElementById("homeView").classList.remove("hidden");
+        updateContinueBtn();
+        initSocialBox("homeSocial", "home", "Cảm xúc & Thảo luận chung");
+        window.scrollTo({ top: 0 });
+      }
+    }
+
+    // ==================== HỆ THỐNG BÌNH LUẬN & CẢM XÚC ====================
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    function getAvatarColor(name) {
+      const colors = ["#ff4757", "#1e90ff", "#2ed573", "#ffa502", "#a55eea", "#ff6b81", "#00d2d3"];
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    function timeAgo(ts) {
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if (diff < 60) return "Vừa xong";
+      if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+      return new Date(ts).toLocaleDateString("vi-VN");
+    }
+
+    const dbBase = FIREBASE_URL.replace(/\/+$/, "");
+
+    // Lớp lưu trữ: ưu tiên Firebase nếu có link, không thì dùng localStorage
+    const SocialStore = {
+      async fetchAll(roomId) {
+        if (!dbBase) {
+          return JSON.parse(localStorage.getItem("local_social_" + roomId) || '{"comments":{},"chapReacts":{},"cmtReacts":{}}');
+        }
+        const [cRes, crRes, mrRes] = await Promise.all([
+          fetch(`${dbBase}/comments/${roomId}.json`),
+          fetch(`${dbBase}/chapReacts/${roomId}.json`),
+          fetch(`${dbBase}/cmtReacts/${roomId}.json`)
+        ]);
+        return {
+          comments: (await cRes.json()) || {},
+          chapReacts: (await crRes.json()) || {},
+          cmtReacts: (await mrRes.json()) || {}
+        };
+      },
+      async addComment(roomId, name, text) {
+        const payload = { name, text, createdAt: Date.now() };
+        if (!dbBase) {
+          const d = await this.fetchAll(roomId);
+          d.comments["c_" + Date.now()] = payload;
+          localStorage.setItem("local_social_" + roomId, JSON.stringify(d));
+          return;
+        }
+        await fetch(`${dbBase}/comments/${roomId}.json`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      },
+      async toggleChapReact(roomId, emojiKey, isCurrentlyActive) {
+        if (!dbBase) {
+          const d = await this.fetchAll(roomId);
+          d.chapReacts[emojiKey] = d.chapReacts[emojiKey] || {};
+          if (isCurrentlyActive) delete d.chapReacts[emojiKey][myClientId];
+          else d.chapReacts[emojiKey][myClientId] = true;
+          localStorage.setItem("local_social_" + roomId, JSON.stringify(d));
+          return;
+        }
+        const url = `${dbBase}/chapReacts/${roomId}/${emojiKey}/${myClientId}.json`;
+        await fetch(url, {
+          method: isCurrentlyActive ? "DELETE" : "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: isCurrentlyActive ? null : "true"
+        });
+      },
+      async toggleCmtReact(roomId, cmtId, emojiKey, isCurrentlyActive) {
+        if (!dbBase) {
+          const d = await this.fetchAll(roomId);
+          d.cmtReacts[cmtId] = d.cmtReacts[cmtId] || {};
+          d.cmtReacts[cmtId][emojiKey] = d.cmtReacts[cmtId][emojiKey] || {};
+          if (isCurrentlyActive) delete d.cmtReacts[cmtId][emojiKey][myClientId];
+          else d.cmtReacts[cmtId][emojiKey][myClientId] = true;
+          localStorage.setItem("local_social_" + roomId, JSON.stringify(d));
+          return;
+        }
+        const url = `${dbBase}/cmtReacts/${roomId}/${cmtId}/${emojiKey}/${myClientId}.json`;
+        await fetch(url, {
+          method: isCurrentlyActive ? "DELETE" : "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: isCurrentlyActive ? null : "true"
+        });
+      }
+    };
+
+    async function initSocialBox(containerId, roomId, headingText) {
+      const box = document.getElementById(containerId);
+      const savedNick = localStorage.getItem("anon_nickname") || "";
+
+      box.innerHTML = `
+        <div class="social-box">
+          <div class="social-title">
+            <span>${escapeHtml(headingText)}</span>
+            <span class="social-mode">${dbBase ? "🟢 Trực tuyến" : "🟡 Lưu trên máy (chưa gắn Firebase)"}</span>
+          </div>
+          <div class="react-bar" data-role="chap-reacts"></div>
+          <form class="cmt-form" data-role="form">
+            <textarea data-role="text" maxlength="500" placeholder="Viết bình luận ẩn danh của bạn..." required></textarea>
+            <div class="cmt-form-row">
+              <input type="text" data-role="nick" maxlength="30" value="${escapeHtml(savedNick)}" placeholder="Biệt danh (bỏ trống = Ẩn danh)" />
+              <button type="submit" class="primary" data-role="submit">Gửi bình luận</button>
+            </div>
+          </form>
+          <div class="cmt-list" data-role="list"><div class="cmt-empty">Đang tải bình luận...</div></div>
+        </div>
+      `;
+
+      const form = box.querySelector('[data-role="form"]');
+      const nickInput = box.querySelector('[data-role="nick"]');
+      const textInput = box.querySelector('[data-role="text"]');
+      const submitBtn = box.querySelector('[data-role="submit"]');
+
+      async function refresh() {
+        try {
+          const state = await SocialStore.fetchAll(roomId);
+
+          // Render cảm xúc của chap/trang
+          const reactBar = box.querySelector('[data-role="chap-reacts"]');
+          reactBar.innerHTML = "";
+          REACTIONS.forEach((r) => {
+            const users = (state.chapReacts && state.chapReacts[r.key]) || {};
+            const count = Object.keys(users).length;
+            const active = Boolean(users[myClientId]);
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "react-btn" + (active ? " active" : "");
+            btn.innerHTML = `<span>${r.icon}</span><span>${r.label}</span><span class="cnt">${count}</span>`;
+            btn.onclick = async () => {
+              btn.disabled = true;
+              await SocialStore.toggleChapReact(roomId, r.key, active);
+              await refresh();
+            };
+            reactBar.appendChild(btn);
+          });
+
+          // Render danh sách bình luận
+          const listWrap = box.querySelector('[data-role="list"]');
+          const entries = Object.entries(state.comments || {}).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+          if (entries.length === 0) {
+            listWrap.innerHTML = `<div class="cmt-empty">Chưa có bình luận nào. Hãy bóc tem đầu tiên!</div>`;
+            return;
+          }
+
+          listWrap.innerHTML = "";
+          entries.forEach(([cmtId, c]) => {
+            const name = c.name || "Ẩn danh";
+            const item = document.createElement("div");
+            item.className = "cmt-item";
+
+            const reactsHtml = REACTIONS.map((r) => {
+              const users = (state.cmtReacts && state.cmtReacts[cmtId] && state.cmtReacts[cmtId][r.key]) || {};
+              const count = Object.keys(users).length;
+              const active = Boolean(users[myClientId]);
+              return `<button type="button" class="cmt-react-btn${active ? " active" : ""}" data-cmt="${cmtId}" data-key="${r.key}" data-active="${active ? 1 : 0}" title="${r.label}">${r.icon}${count > 0 ? ` <span>${count}</span>` : ""}</button>`;
+            }).join("");
+
+            item.innerHTML = `
+              <div class="cmt-avatar" style="background:${getAvatarColor(name)}">${escapeHtml(name.charAt(0))}</div>
+              <div class="cmt-body">
+                <div class="cmt-head">
+                  <span class="cmt-name">${escapeHtml(name)}</span>
+                  <span class="cmt-time">${timeAgo(c.createdAt || Date.now())}</span>
+                </div>
+                <div class="cmt-text">${escapeHtml(c.text || "")}</div>
+                <div class="cmt-reacts">${reactsHtml}</div>
+              </div>
+            `;
+
+            item.querySelectorAll(".cmt-react-btn").forEach((b) => {
+              b.onclick = async () => {
+                b.disabled = true;
+                await SocialStore.toggleCmtReact(roomId, b.dataset.cmt, b.dataset.key, b.dataset.active === "1");
+                await refresh();
+              };
+            });
+
+            listWrap.appendChild(item);
+          });
+        } catch (err) {
+          box.querySelector('[data-role="list"]').innerHTML = `<div class="cmt-empty">Lỗi kết nối database bình luận. Kiểm tra lại FIREBASE_URL hoặc Rules nhé!</div>`;
+        }
+      }
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const text = textInput.value.trim();
+        if (!text) return;
+        const nick = nickInput.value.trim() || "Ẩn danh";
+        localStorage.setItem("anon_nickname", nick === "Ẩn danh" ? "" : nick);
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Đang gửi...";
+        await SocialStore.addComment(roomId, nick, text);
+        textInput.value = "";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Gửi bình luận";
+        await refresh();
+      };
+
+      await refresh();
+    }
+
+    window.addEventListener("hashchange", syncFromHash);
+    syncFromHash();
+  </script>
+</body>
+</html>
